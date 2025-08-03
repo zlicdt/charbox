@@ -17,27 +17,36 @@ struct ChatView: View {
                                     .id(message.id)
                             }
                             
-                            if chatManager.isLoading {
+                            if chatManager.isLoading && !session.messages.contains(where: { $0.isStreaming }) {
                                 LoadingMessageBubble()
                             }
                         }
                         .padding()
                     }
                     .onChange(of: session.messages.count) {
-                        if let lastMessage = session.messages.last {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                withAnimation {
-                                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                                }
+                        guard let lastMessage = session.messages.last else { return }
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                            withAnimation {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onChange(of: session.messages.last?.content) { _, _ in
+                        guard let lastMessage = session.messages.last else { return }
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 50_000_000) // 0.05 seconds
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }
                     .onChange(of: chatManager.isLoading) {
-                        if let lastMessage = session.messages.last {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                withAnimation {
-                                    proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                                }
+                        guard let lastMessage = session.messages.last else { return }
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                            withAnimation {
+                                proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }

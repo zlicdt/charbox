@@ -4,14 +4,24 @@ import Foundation
 
 struct Message: Identifiable, Codable {
     var id = UUID()
-    let content: String
+    var content: String
     let isUser: Bool
     let timestamp: Date
+    var isStreaming: Bool = false
     
     init(content: String, isUser: Bool) {
         self.content = content
         self.isUser = isUser
         self.timestamp = Date()
+        self.isStreaming = false
+    }
+    
+    mutating func appendContent(_ newContent: String) {
+        self.content += newContent
+    }
+    
+    mutating func setStreaming(_ streaming: Bool) {
+        self.isStreaming = streaming
     }
 }
 

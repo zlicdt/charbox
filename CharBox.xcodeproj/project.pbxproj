@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4FF6FE0F2E3F97FD001A6AB7 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4FF6FE0E2E3F97FD001A6AB7 /* MarkdownUI */; };
 		A1000001000000000000001 /* CharboxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001 /* CharboxApp.swift */; };
 		A1000001000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002 /* ContentView.swift */; };
 		A1000001000000000000003 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000003 /* Models.swift */; };
@@ -36,6 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FF6FE0F2E3F97FD001A6AB7 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +121,9 @@
 				Base,
 			);
 			mainGroup = A1000003000000000000001;
+			packageReferences = (
+				4FF6FE0D2E3F97FD001A6AB7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+			);
 			productRefGroup = A1000003000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -346,6 +351,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4FF6FE0D2E3F97FD001A6AB7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4FF6FE0E2E3F97FD001A6AB7 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FF6FE0D2E3F97FD001A6AB7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1000006000000000000001 /* Project object */;
 }

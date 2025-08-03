@@ -62,41 +62,80 @@ class ChatManager: ObservableObject {
         let userMessage = Message(content: content, isUser: true)
         session.addMessage(userMessage)
         
-        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
-            sessions[index] = session
-            currentSession = sessions[index]
+        DispatchQueue.main.async {
+            if let index = self.sessions.firstIndex(where: { $0.id == session.id }) {
+                self.sessions[index] = session
+                self.currentSession = self.sessions[index]
+            }
+            
+            self.saveSessions()
         }
         
-        saveSessions()
-        
         // 发送到API
-        sendToAPI(settings: settings)
+        sendToAPIStream(settings: settings)
     }
     
-    private func sendToAPI(settings: ChatSettings) {
-        isLoading = true
-        
+    private func sendToAPIStream(settings: ChatSettings) {
         Task {
+            await MainActor.run {
+                isLoading = true
+            }
+            
             do {
-                let response = try await callAPI(settings: settings)
+                // 创建一个空的AI消息用于流式更新
+                let aiMessage = Message(content: "", isUser: false)
                 await MainActor.run {
                     if var session = currentSession {
-                        let aiMessage = Message(content: response, isUser: false)
-                        session.addMessage(aiMessage)
+                        var streamingMessage = aiMessage
+                        streamingMessage.isStreaming = true
+                        session.addMessage(streamingMessage)
                         
-                        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
-                            sessions[index] = session
-                            currentSession = sessions[index]
+                        if let index = self.sessions.firstIndex(where: { $0.id == session.id }) {
+                            self.sessions[index] = session
+                            self.currentSession = self.sessions[index]
                         }
+                        self.saveSessions()
+                    }
+                }
+                
+                try await callAPIStream(settings: settings) { [weak self] chunk in
+                    guard let self = self else { return }
+                    Task { @MainActor in
+                        if var session = self.currentSession,
+                           let lastMessageIndex = session.messages.lastIndex(where: { !$0.isUser }) {
+                            session.messages[lastMessageIndex].appendContent(chunk)
+                            
+                            if let sessionIndex = self.sessions.firstIndex(where: { $0.id == session.id }) {
+                                self.sessions[sessionIndex] = session
+                                self.currentSession = self.sessions[sessionIndex]
+                            }
+                        }
+                    }
+                }
+                
+                await MainActor.run {
+                    if var session = currentSession,
+                       let lastMessageIndex = session.messages.lastIndex(where: { !$0.isUser }) {
+                        session.messages[lastMessageIndex].setStreaming(false)
                         
+                        if let sessionIndex = sessions.firstIndex(where: { $0.id == session.id }) {
+                            sessions[sessionIndex] = session
+                            currentSession = sessions[sessionIndex]
+                        }
                         saveSessions()
                     }
                     isLoading = false
                 }
+                
             } catch {
                 await MainActor.run {
                     // 错误处理
                     if var session = currentSession {
+                        // 移除流式消息，添加错误消息
+                        if let lastMessageIndex = session.messages.lastIndex(where: { !$0.isUser && $0.isStreaming }) {
+                            session.messages.remove(at: lastMessageIndex)
+                        }
+                        
                         let errorMessage = Message(content: "错误: \(error.localizedDescription)", isUser: false)
                         session.addMessage(errorMessage)
                         
@@ -115,22 +154,22 @@ class ChatManager: ObservableObject {
     
     // MARK: - API Calls
     
-    private func callAPI(settings: ChatSettings) async throws -> String {
+    private func callAPIStream(settings: ChatSettings, onChunk: @escaping (String) -> Void) async throws {
         switch settings.apiProvider {
         case .openai:
-            return try await callOpenAI(settings: settings)
+            try await callOpenAIStream(settings: settings, onChunk: onChunk)
         case .anthropic:
-            return try await callAnthropic(settings: settings)
+            try await callAnthropicStream(settings: settings, onChunk: onChunk)
         case .gemini:
-            return try await callGemini(settings: settings)
+            try await callGeminiStream(settings: settings, onChunk: onChunk)
         case .ollama:
-            return try await callOllama(settings: settings)
+            try await callOllamaStream(settings: settings, onChunk: onChunk)
         case .siliconflow:
-            return try await callSiliconFlow(settings: settings)
+            try await callSiliconFlowStream(settings: settings, onChunk: onChunk)
         }
     }
     
-    private func callOpenAI(settings: ChatSettings) async throws -> String {
+    private func callOpenAIStream(settings: ChatSettings, onChunk: @escaping (String) -> Void) async throws {
         guard let url = URL(string: "\(settings.apiProvider.baseURL)/chat/completions") else {
             throw URLError(.badURL)
         }
@@ -151,10 +190,12 @@ class ChatManager: ObservableObject {
         
         if let session = currentSession {
             for message in session.messages {
-                messages.append([
-                    "role": message.isUser ? "user" : "assistant",
-                    "content": message.content
-                ])
+                if !message.isStreaming { // 排除正在流式传输的消息
+                    messages.append([
+                        "role": message.isUser ? "user" : "assistant",
+                        "content": message.content
+                    ])
+                }
             }
         }
         
@@ -162,25 +203,34 @@ class ChatManager: ObservableObject {
             "model": settings.selectedModel,
             "messages": messages,
             "temperature": settings.temperature,
-            "max_tokens": settings.maxTokens
+            "max_tokens": settings.maxTokens,
+            "stream": true
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (asyncBytes, _) = try await URLSession.shared.bytes(for: request)
         
-        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let choices = json["choices"] as? [[String: Any]],
-           let firstChoice = choices.first,
-           let message = firstChoice["message"] as? [String: Any],
-           let content = message["content"] as? String {
-            return content
+        for try await line in asyncBytes.lines {
+            if line.hasPrefix("data: ") {
+                let jsonString = String(line.dropFirst(6))
+                if jsonString == "[DONE]" {
+                    break
+                }
+                
+                if let jsonData = jsonString.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                   let choices = json["choices"] as? [[String: Any]],
+                   let firstChoice = choices.first,
+                   let delta = firstChoice["delta"] as? [String: Any],
+                   let content = delta["content"] as? String {
+                    onChunk(content)
+                }
+            }
         }
-        
-        throw URLError(.cannotParseResponse)
     }
     
-    private func callAnthropic(settings: ChatSettings) async throws -> String {
+    private func callAnthropicStream(settings: ChatSettings, onChunk: @escaping (String) -> Void) async throws {
         guard let url = URL(string: "\(settings.apiProvider.baseURL)/messages") else {
             throw URLError(.badURL)
         }
@@ -195,10 +245,12 @@ class ChatManager: ObservableObject {
         
         if let session = currentSession {
             for message in session.messages {
-                messages.append([
-                    "role": message.isUser ? "user" : "assistant",
-                    "content": message.content
-                ])
+                if !message.isStreaming { // 排除正在流式传输的消息
+                    messages.append([
+                        "role": message.isUser ? "user" : "assistant",
+                        "content": message.content
+                    ])
+                }
             }
         }
         
@@ -206,33 +258,42 @@ class ChatManager: ObservableObject {
             "model": settings.selectedModel,
             "messages": messages,
             "max_tokens": settings.maxTokens,
-            "system": settings.systemPrompt
+            "system": settings.systemPrompt,
+            "stream": true
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (asyncBytes, _) = try await URLSession.shared.bytes(for: request)
         
-        if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let content = json["content"] as? [[String: Any]],
-           let firstContent = content.first,
-           let text = firstContent["text"] as? String {
-            return text
+        for try await line in asyncBytes.lines {
+            if line.hasPrefix("data: ") {
+                let jsonString = String(line.dropFirst(6))
+                if jsonString == "[DONE]" {
+                    break
+                }
+                
+                if let jsonData = jsonString.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                   let delta = json["delta"] as? [String: Any],
+                   let text = delta["text"] as? String {
+                    onChunk(text)
+                }
+            }
         }
-        
-        throw URLError(.cannotParseResponse)
     }
     
-    private func callGemini(settings: ChatSettings) async throws -> String {
-        // Gemini API 实现
-        return "Gemini API 响应 (待实现)"
+    private func callGeminiStream(settings: ChatSettings, onChunk: @escaping (String) -> Void) async throws {
+        // Gemini API 流式实现 (待实现)
+        onChunk("Gemini API 流式响应 (待实现)")
     }
     
-    private func callOllama(settings: ChatSettings) async throws -> String {
-        // Ollama API 实现
-        return "Ollama API 响应 (待实现)"
+    private func callOllamaStream(settings: ChatSettings, onChunk: @escaping (String) -> Void) async throws {
+        // Ollama API 流式实现 (待实现)
+        onChunk("Ollama API 流式响应 (待实现)")
     }
-    private func callSiliconFlow(settings: ChatSettings) async throws -> String {
+    
+    private func callSiliconFlowStream(settings: ChatSettings, onChunk: @escaping (String) -> Void) async throws {
         // SiliconFlow 的基础 API 地址
         let baseURL = "https://api.siliconflow.cn/v1"
         guard let url = URL(string: "\(baseURL)/chat/completions") else {
@@ -256,47 +317,51 @@ class ChatManager: ObservableObject {
         
         if let session = currentSession {
             for message in session.messages {
-                messages.append([
-                    "role": message.isUser ? "user" : "assistant",
-                    "content": message.content
-                ])
+                if !message.isStreaming { // 排除正在流式传输的消息
+                    messages.append([
+                        "role": message.isUser ? "user" : "assistant",
+                        "content": message.content
+                    ])
+                }
             }
         }
         
-        // SiliconFlow 特有参数 (stream 和 stop 是可选项)
+        // SiliconFlow 流式传输参数
         let body: [String: Any] = [
             "model": settings.selectedModel,
             "messages": messages,
             "temperature": settings.temperature,
             "max_tokens": settings.maxTokens,
-            "stream": false,  // 关闭流式传输
-            // "stop": ["\n", "###"] // 可选: 自定义停止词
+            "stream": true
         ]
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (asyncBytes, response) = try await URLSession.shared.bytes(for: request)
         
-        // 错误响应处理 (SiliconFlow 返回 4xx/5xx 状态码)
+        // 错误响应处理
         guard let httpResponse = response as? HTTPURLResponse,
               (200...299).contains(httpResponse.statusCode) else {
-            if let errorResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let errorMessage = errorResponse["message"] as? String {
-                throw NSError(domain: "SiliconFlowError", code: 0, userInfo: [NSLocalizedDescriptionKey: errorMessage])
-            }
             throw URLError(.badServerResponse)
         }
         
-        // 解析响应内容 (结构兼容 OpenAI)
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let choices = json["choices"] as? [[String: Any]],
-              let firstChoice = choices.first,
-              let message = firstChoice["message"] as? [String: Any],
-              let content = message["content"] as? String else {
-            throw URLError(.cannotParseResponse)
+        for try await line in asyncBytes.lines {
+            if line.hasPrefix("data: ") {
+                let jsonString = String(line.dropFirst(6))
+                if jsonString == "[DONE]" {
+                    break
+                }
+                
+                if let jsonData = jsonString.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                   let choices = json["choices"] as? [[String: Any]],
+                   let firstChoice = choices.first,
+                   let delta = firstChoice["delta"] as? [String: Any],
+                   let content = delta["content"] as? String {
+                    onChunk(content)
+                }
+            }
         }
-        
-        return content
     }
     
     // MARK: - Persistence
