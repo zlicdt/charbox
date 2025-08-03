@@ -1,5 +1,5 @@
 import SwiftUI
-
+@available(macOS 14.0, *)
 struct ChatView: View {
     @EnvironmentObject var chatManager: ChatManager
     @EnvironmentObject var settingsManager: SettingsManager
@@ -23,7 +23,7 @@ struct ChatView: View {
                         }
                         .padding()
                     }
-                    .onChange(of: session.messages.count) { _ in
+                    .onChange(of: session.messages.count) {
                         if let lastMessage = session.messages.last {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 withAnimation {
@@ -32,7 +32,7 @@ struct ChatView: View {
                             }
                         }
                     }
-                    .onChange(of: chatManager.isLoading) { _ in
+                    .onChange(of: chatManager.isLoading) {
                         if let lastMessage = session.messages.last {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                                 withAnimation {
@@ -91,6 +91,7 @@ struct MessageBubble: View {
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(message.content)
+                        .textSelection(.enabled)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(Color.accentColor)
@@ -104,6 +105,7 @@ struct MessageBubble: View {
             } else {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(message.content)
+                        .textSelection(.enabled)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(Color(NSColor.controlBackgroundColor))
@@ -161,29 +163,55 @@ struct LoadingMessageBubble: View {
     }
 }
 
+
 struct ChatInputView: View {
     @Binding var inputText: String
     let isLoading: Bool
     let onSend: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            TextField("输入消息...", text: $inputText, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(1...5)
-                .onSubmit {
-                    if !isLoading {
-                        onSend()
+        HStack(alignment: .bottom, spacing: 12) {
+            ScrollView {
+                TextField("输入消息...", text: $inputText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...5)
+                    .onSubmit {
+                        if !isLoading {
+                            onSend()
+                        }
                     }
-                }
-                .disabled(isLoading)
+                    .onKeyPress(.return, phases: .down) { keyPress in
+                        if keyPress.modifiers.contains(.command) {
+                            // Command+Enter: 插入换行符
+                            inputText += "\n"
+                            return .handled
+                        } else {
+                            // 普通 Enter: 发送消息
+                            if !isLoading {
+                                onSend()
+                            }
+                            return .handled
+                        }
+                    }
+                    .disabled(isLoading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+            }
+            .frame(minHeight: 34, maxHeight: 100)
+            .background(Color(NSColor.textBackgroundColor))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+            )
             
             Button(action: onSend) {
                 Image(systemName: isLoading ? "stop.circle" : "paperplane.fill")
                     .foregroundColor(isLoading || inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .accentColor)
+                    .font(.system(size: 16))
             }
             .buttonStyle(.plain)
             .disabled(isLoading || inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .frame(width: 24, height: 24)
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor))
