@@ -87,7 +87,7 @@ struct ChatView: View {
         guard !trimmedText.isEmpty && !chatManager.isLoading else { return }
         
         chatManager.sendMessage(trimmedText, settings: settingsManager.settings)
-        inputText = ""
+        inputText = "" // Restore to empty input area
     }
 }
 
@@ -194,13 +194,10 @@ struct ChatInputView: View {
                             // Command+Enter: 插入换行符
                             inputText += "\n"
                             return .handled
-                        } else {
-                            // 普通 Enter: 发送消息
-                            if !isLoading {
-                                onSend()
-                            }
-                            return .handled
                         }
+                        // 对于普通的Enter键，返回.ignored让系统处理
+                        // 这样可以避免与输入法冲突，让onSubmit来处理发送逻辑
+                        return .ignored
                     }
                     .disabled(isLoading)
                     .padding(.horizontal, 12)
@@ -215,11 +212,14 @@ struct ChatInputView: View {
             
             Button(action: onSend) {
                 Image(systemName: isLoading ? "stop.circle" : "paperplane.fill")
-                    .foregroundColor(isLoading || inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .accentColor)
+                    .foregroundColor(
+                        isLoading ? .red : 
+                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .accentColor
+                    )
                     .font(.system(size: 16))
             }
             .buttonStyle(.plain)
-            .disabled(isLoading || inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!isLoading && inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .frame(width: 24, height: 24)
         }
         .padding()
