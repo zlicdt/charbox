@@ -11,11 +11,8 @@ class ChatManager: ObservableObject {
     
     init() {
         loadSessions()
-        if sessions.isEmpty {
-            createNewSession()
-        } else {
-            currentSession = sessions.first
-        }
+        // 不自动选择会话，让用户主动选择
+        currentSession = nil
     }
     
     // MARK: - Session Management
@@ -31,16 +28,16 @@ class ChatManager: ObservableObject {
         currentSession = session
     }
     
+    func clearCurrentSession() {
+        currentSession = nil
+    }
+    
     func deleteSession(_ session: ChatSession) {
         if let index = sessions.firstIndex(where: { $0.id == session.id }) {
             sessions.remove(at: index)
             
             if currentSession?.id == session.id {
-                currentSession = sessions.first
-            }
-            
-            if sessions.isEmpty {
-                createNewSession()
+                currentSession = nil
             }
             
             saveSessions()

@@ -51,6 +51,11 @@ struct SidebarView: View {
                 .padding(.horizontal, 8)
                 .padding(.top, 8)
             }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // 点击空白区域清除当前选中的会话
+                chatManager.clearCurrentSession()
+            }
             
             Spacer()
         }
@@ -120,6 +125,12 @@ struct ChatSessionRow: View {
                 onSelect()
             }
         }
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    // 阻止事件冒泡到ScrollView
+                }
+        )
         .alert("删除对话", isPresented: $showingDeleteConfirmation) {
             Button("取消", role: .cancel) { }
             Button("删除", role: .destructive) {

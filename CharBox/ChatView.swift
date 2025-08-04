@@ -66,10 +66,10 @@ struct ChatView: View {
             } else {
                 // 空状态
                 VStack(spacing: 20) {
-                    Image(systemName: "message")
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 96))
+                        .foregroundColor(.blue)
+
                     Text("选择一个对话开始聊天")
                         .font(.title2)
                         .foregroundColor(.secondary)
