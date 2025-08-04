@@ -1,4 +1,5 @@
 import SwiftUI
+import MarkdownUI
 @available(macOS 14.0, *)
 struct ChatView: View {
     @EnvironmentObject var chatManager: ChatManager
@@ -113,14 +114,13 @@ struct MessageBubble: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(message.content)
+                    Markdown(message.content)
                         .textSelection(.enabled)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(Color(NSColor.controlBackgroundColor))
                         .foregroundColor(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
-                    
                     Text(formatTime(message.timestamp))
                         .font(.caption2)
                         .foregroundColor(.secondary)
