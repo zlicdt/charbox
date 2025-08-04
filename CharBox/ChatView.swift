@@ -255,35 +255,27 @@ struct ChatInputView: View {
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            ScrollView {
-                TextField("输入消息...", text: $inputText, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .lineLimit(1...5)
-                    .onSubmit {
-                        if !isLoading {
-                            onSend()
-                        }
+            TextField("输入消息...", text: $inputText, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(1...5)
+                .onSubmit {
+                    if !isLoading {
+                        onSend()
                     }
-                    .onKeyPress(.return, phases: .down) { keyPress in
-                        if keyPress.modifiers.contains(.command) {
-                            // Command+Enter: 插入换行符
-                            inputText += "\n"
-                            return .handled
-                        }
-                        // 对于普通的Enter键，返回.ignored让系统处理
-                        // 这样可以避免与输入法冲突，让onSubmit来处理发送逻辑
-                        return .ignored
+                }
+                .onKeyPress(.return, phases: .down) { keyPress in
+                    if keyPress.modifiers.contains(.command) {
+                        // Command+Enter: 插入换行符
+                        inputText += "\n"
+                        return .handled
                     }
-                    .disabled(isLoading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-            }
-            .frame(minHeight: 34, maxHeight: 100)
-            .background(Color(NSColor.textBackgroundColor))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-            )
+                    // 对于普通的Enter键，返回.ignored让系统处理
+                    // 这样可以避免与输入法冲突，让onSubmit来处理发送逻辑
+                    return .ignored
+                }
+                .disabled(isLoading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
             
             Button(action: onSend) {
                 Image(systemName: isLoading ? "stop.circle" : "paperplane.fill")
