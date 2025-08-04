@@ -93,6 +93,8 @@ struct ChatView: View {
 
 struct MessageBubble: View {
     let message: Message
+    @State private var showCopyButton = false
+    @State private var showCopyConfirmation = false
     
     var body: some View {
         HStack {
@@ -108,9 +110,23 @@ struct MessageBubble: View {
                         .foregroundColor(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                     
-                    Text(formatTime(message.timestamp))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        if showCopyButton {
+                            Button(action: {
+                                copyToClipboard(message.content)
+                            }) {
+                                Image(systemName: showCopyConfirmation ? "checkmark" : "doc.on.doc")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.opacity)
+                        }
+                        
+                        Text(formatTime(message.timestamp))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
             } else {
                 VStack(alignment: .leading, spacing: 4) {
@@ -121,12 +137,48 @@ struct MessageBubble: View {
                         .background(Color(NSColor.controlBackgroundColor))
                         .foregroundColor(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
-                    Text(formatTime(message.timestamp))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 8) {
+                        Text(formatTime(message.timestamp))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        if showCopyButton {
+                            Button(action: {
+                                copyToClipboard(message.content)
+                            }) {
+                                Image(systemName: showCopyConfirmation ? "checkmark" : "doc.on.doc")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .transition(.opacity)
+                        }
+                    }
                 }
                 
                 Spacer(minLength: 50)
+            }
+        }
+        .onHover { isHovering in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showCopyButton = isHovering
+            }
+        }
+    }
+    
+    private func copyToClipboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showCopyConfirmation = true
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showCopyConfirmation = false
             }
         }
     }
