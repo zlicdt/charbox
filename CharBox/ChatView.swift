@@ -84,6 +84,9 @@ struct ChatView: View {
                     isLoading: chatManager.isLoading,
                     onSend: {
                         sendMessage()
+                    },
+                    onStop: {
+                        chatManager.stopGeneration()
                     }
                 )
             } else {
@@ -252,6 +255,7 @@ struct ChatInputView: View {
     @Binding var inputText: String
     let isLoading: Bool
     let onSend: () -> Void
+    let onStop: () -> Void
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
@@ -277,7 +281,7 @@ struct ChatInputView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             
-            Button(action: onSend) {
+            Button(action: isLoading ? onStop : onSend) {
                 Image(systemName: isLoading ? "stop.circle" : "paperplane.fill")
                     .foregroundColor(
                         isLoading ? .red : 

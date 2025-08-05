@@ -31,6 +31,7 @@ class ChatManager: ObservableObject {
     
     private let userDefaults = UserDefaults.standard
     private let sessionsKey = "ChatSessions"
+    private var currentTask: Task<Void, Never>?
     
     init() {
         loadSessions()
@@ -74,6 +75,29 @@ class ChatManager: ObservableObject {
         }
     }
     
+    func stopGeneration() {
+        currentTask?.cancel()
+        currentTask = nil
+        
+        DispatchQueue.main.async {
+            self.isLoading = false
+            
+            // 清除未完成的流式消息
+            if var session = self.currentSession {
+                if let lastMessageIndex = session.messages.lastIndex(where: { !$0.isUser && $0.isStreaming }) {
+                    session.messages.remove(at: lastMessageIndex)
+                    
+                    if let sessionIndex = self.sessions.firstIndex(where: { $0.id == session.id }) {
+                        self.sessions[sessionIndex] = session
+                        self.currentSession = self.sessions[sessionIndex]
+                    }
+                    
+                    self.saveSessions()
+                }
+            }
+        }
+    }
+    
     // MARK: - Message Management
     
     func sendMessage(_ content: String, settings: ChatSettings) {
@@ -96,12 +120,15 @@ class ChatManager: ObservableObject {
     }
     
     private func sendToAPIStream(settings: ChatSettings) {
-        Task {
+        currentTask = Task {
             await MainActor.run {
                 isLoading = true
             }
             
             do {
+                // 检查任务是否被取消
+                try Task.checkCancellation()
+                
                 // 创建一个空的AI消息用于流式更新
                 let aiMessage = Message(content: "", isUser: false)
                 await MainActor.run {
@@ -121,6 +148,9 @@ class ChatManager: ObservableObject {
                 try await callAPIStream(settings: settings) { [weak self] chunk in
                     guard let self = self else { return }
                     Task { @MainActor in
+                        // 检查任务是否被取消
+                        if Task.isCancelled { return }
+                        
                         if var session = self.currentSession,
                            let lastMessageIndex = session.messages.lastIndex(where: { !$0.isUser }) {
                             session.messages[lastMessageIndex].appendContent(chunk)
@@ -132,6 +162,9 @@ class ChatManager: ObservableObject {
                         }
                     }
                 }
+                
+                // 检查任务是否被取消
+                try Task.checkCancellation()
                 
                 await MainActor.run {
                     if var session = currentSession,
@@ -145,8 +178,12 @@ class ChatManager: ObservableObject {
                         saveSessions()
                     }
                     isLoading = false
+                    currentTask = nil
                 }
                 
+            } catch is CancellationError {
+                // 任务被取消，不需要额外处理，stopGeneration已经处理了清理工作
+                return
             } catch {
                 await MainActor.run {
                     // 错误处理
@@ -167,6 +204,7 @@ class ChatManager: ObservableObject {
                         saveSessions()
                     }
                     isLoading = false
+                    currentTask = nil
                 }
             }
         }
