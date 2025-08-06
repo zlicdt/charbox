@@ -186,7 +186,8 @@ struct MessageBubble: View {
                         .background(Color(NSColor.controlBackgroundColor))
                         .foregroundColor(.primary)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .markdownCodeSyntaxHighlighter(.splash(theme: .midnight(withFont: .init(size: 16.0))))
+                        .markdownCodeSyntaxHighlighter(.splash(theme: .sundellsColors(withFont: .init(size: 16.0))))
+                    // have no good theme, that's a middle scheme
                         .markdownTheme(.docC)
                     // TODO: Make a better theme, change the font
                     HStack(spacing: 8) {
