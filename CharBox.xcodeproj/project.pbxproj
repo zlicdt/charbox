@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4F54F0902E4377E70095A0D0 /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 4F54F08F2E4377E70095A0D0 /* Splash */; };
+		4F54F0922E437F220095A0D0 /* TextOutputFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F54F0912E437F220095A0D0 /* TextOutputFormat.swift */; };
 		4FE4E5382E41FE9E00D17D48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4FE4E5372E41FE9E00D17D48 /* Assets.xcassets */; };
 		4FF6FE0F2E3F97FD001A6AB7 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4FF6FE0E2E3F97FD001A6AB7 /* MarkdownUI */; };
 		A1000001000000000000001 /* CharboxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001 /* CharboxApp.swift */; };
@@ -20,6 +22,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4F54F0912E437F220095A0D0 /* TextOutputFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextOutputFormat.swift; sourceTree = "<group>"; };
 		4FE4E5372E41FE9E00D17D48 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000001 /* CharboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharboxApp.swift; sourceTree = "<group>"; };
 		A1000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -40,6 +43,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4FF6FE0F2E3F97FD001A6AB7 /* MarkdownUI in Frameworks */,
+				4F54F0902E4377E70095A0D0 /* Splash in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -68,6 +72,7 @@
 				A1000000000000000000010 /* Info.plist */,
 				A1000000000000000000011 /* CharBox.entitlements */,
 				4FE4E5372E41FE9E00D17D48 /* Assets.xcassets */,
+				4F54F0912E437F220095A0D0 /* TextOutputFormat.swift */,
 			);
 			path = CharBox;
 			sourceTree = "<group>";
@@ -126,6 +131,7 @@
 			mainGroup = A1000003000000000000001;
 			packageReferences = (
 				4FF6FE0D2E3F97FD001A6AB7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				4F54F08E2E4377E70095A0D0 /* XCRemoteSwiftPackageReference "Splash" */,
 			);
 			productRefGroup = A1000003000000000000003 /* Products */;
 			projectDirPath = "";
@@ -160,6 +166,7 @@
 				A1000001000000000000006 /* SidebarView.swift in Sources */,
 				A1000001000000000000007 /* ChatView.swift in Sources */,
 				A1000001000000000000008 /* SettingsView.swift in Sources */,
+				4F54F0922E437F220095A0D0 /* TextOutputFormat.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,6 +382,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		4F54F08E2E4377E70095A0D0 /* XCRemoteSwiftPackageReference "Splash" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/JohnSundell/Splash";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.16.0;
+			};
+		};
 		4FF6FE0D2E3F97FD001A6AB7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
@@ -386,6 +401,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4F54F08F2E4377E70095A0D0 /* Splash */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F54F08E2E4377E70095A0D0 /* XCRemoteSwiftPackageReference "Splash" */;
+			productName = Splash;
+		};
 		4FF6FE0E2E3F97FD001A6AB7 /* MarkdownUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4FF6FE0D2E3F97FD001A6AB7 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
